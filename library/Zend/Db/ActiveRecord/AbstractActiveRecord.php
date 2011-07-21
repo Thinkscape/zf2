@@ -673,6 +673,8 @@ abstract class AbstractActiveRecord
 
 	 		// store it in registry
 	 		Registry::set($cacheId,$obj);
+
+	 		return $obj;
 		}else{
 			return new static($data);
 		}
