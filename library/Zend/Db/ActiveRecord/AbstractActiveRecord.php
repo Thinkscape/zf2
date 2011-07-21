@@ -210,6 +210,13 @@ abstract class AbstractActiveRecord
 	 */
 	protected $_parents = array();
 
+	/**
+	 * Instance repository of associates (as per $_hasOne)
+	 *
+	 * @var array
+	 */
+	protected $_associates = array();
+
 
 	/**
 	 * Warning! You should NOT use the default constructor - i.e. $foo = new Record();
@@ -1503,6 +1510,12 @@ abstract class AbstractActiveRecord
 		// determine what is the children object class
 		$childClass = static::$_hasMany[$type][0];
 
+		// append namespace if none supplied
+		if(!strstr($childClass,'\\')){
+			$refl = new ReflectionClass($childClass);
+			$childClass = $refl->getNamespaceName().'\\'.$childClass;
+		}
+
 		// determine the column used to associate children with parent
 		if(isset(static::$_hasMany[$type][1])){
 			$col  = static::$_hasMany[$type][1];
@@ -1533,6 +1546,12 @@ abstract class AbstractActiveRecord
 		// determine the class of the parent object
 		$parentClass = static::$_belongsTo[$type][0];
 
+		// append namespace if none supplied
+		if(!strstr($parentClass,'\\')){
+			$refl = new ReflectionClass(get_class($this));
+			$parentClass = $refl->getNamespaceName().'\\'.$parentClass;
+		}
+
 		// determine the column used to associate us with the parent
 		if(isset(static::$_belongsTo[$type][1])){
 			$prop = static::$_belongsTo[$type][1];
@@ -1552,6 +1571,49 @@ abstract class AbstractActiveRecord
 	}
 
 	/**
+	 * Returns an associate (one-to-one association)
+	 *
+	 * @param string	$type		Type of association (as found in $_hasOne)
+	 * @return \Zend\Db\ActiveRecord\AbstractActiveRecord|null
+	 */
+	protected function _findAssociate($type){
+		if(isset($this->_associates[$type])){
+			return $this->_associates[$type];
+		}
+
+		// determine the class of the parent object
+		$parentClass = static::$_hasOne[$type][0];
+
+		// append namespace if none supplied
+		if(!strstr($parentClass,'\\')){
+			$refl = new ReflectionClass(get_class($this));
+			$parentClass = $refl->getNamespaceName().'\\'.$parentClass;
+		}
+
+		// determine the column used to associate us with the parent
+		if(isset(static::$_hasOne[$type][1])){
+			$prop = static::$_hasOne[$type][1];
+		}else{
+			$prop = static::_determineAssociationColumn($parentClass, get_called_class());
+		}
+
+		// load self if necessary
+		if($this->_id && !$this->_loaded){
+			$this->_loadFromDb();
+		}
+
+		// retrieve parent id
+		if(
+			isset($this->_data[$prop]) &&
+			($id = $this->_data[$prop])
+		){	
+			return $this->_associates[$type] = call_user_func(array($parentClass,'findById'),$id);
+		}else{
+			return false;
+		}
+	}
+
+	/**
 	 * Try to generate column name that is used to associate child class with parent class.
 	 * By default it takes $parentClass and adds "Id" suffix. i.e.
 	 *     parentClass: User
@@ -1564,7 +1626,9 @@ abstract class AbstractActiveRecord
 	 * @return string
 	 */
 	protected static function _determineAssociationColumn($parentClass, $childClass){
-		$parentClass = substr($parentClass,strripos($parentClass,'\\')+1);		// strip namespace
+		if(strstr($parentClass,'\\')){
+			$parentClass = substr($parentClass,strripos($parentClass,'\\')+1);		// strip namespace
+		}
 		$parentClass = strtolower($parentClass); // make lowercase
 		return $parentClass.'Id';
 	}
@@ -1584,6 +1648,11 @@ abstract class AbstractActiveRecord
 		// return parent object
 		elseif(isset(static::$_belongsTo[$prop])){
 			return $this->_findParent($prop);
+		}
+
+		// return associated object
+		elseif(isset(static::$_hasOne[$prop])){
+			return $this->_findAssociate($prop);
 		}
 
 		// return children
