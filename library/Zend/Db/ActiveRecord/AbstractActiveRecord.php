@@ -787,6 +787,20 @@ abstract class AbstractActiveRecord
 	}
 
 	/**
+	 * Find the first matching row (object) or null (if nothing found)
+	 *
+	 * @static
+	 * @param array $params
+	 * @param array $options
+	 * @return \Zend\Db\ActiveRecord\AbstractActiveRecord|null
+	 */
+	public static function findOne($params = array(), $options = array()){
+		$options['limit'] = 1;
+		$result = static::findAll($params,$options);
+		return $result->first();
+	}
+
+	/**
 	 * Prepare and return a Zend\Db\Select statement that will be used to find records.
 	 *
 	 * @static
@@ -1237,12 +1251,6 @@ abstract class AbstractActiveRecord
 		}
 	}
 
-	public static function findOne($params = array(), $options = array()){
-		$options['limit'] = 1;
-		$result = static::findAll($params,$options);
-		return $result->first();
-	}
-
 
 	/**
 	 * Save column information to cache
@@ -1468,9 +1476,9 @@ abstract class AbstractActiveRecord
 	 * @return array
 	 */
 	protected static function _getTableColumns($tableName,\Zend\Db\Adapter\AbstractAdapter $db){
-		$meta = $db->describeTable($dbTable);
+		$meta = $db->describeTable($tableName);
 		if(!count($meta))
-			throw new Exception\Exception('Cannot determine table "'.$dbTable.'" columns');
+			throw new Exception\Exception('Cannot determine table "'.$tableName.'" columns');
 
 		$result = array();
 		foreach($meta as $column => $props){
@@ -1602,12 +1610,14 @@ abstract class AbstractActiveRecord
 
 	public function __set($prop,$val){
 		// return object id (performance)
-		if($prop == 'id' || $prop == static::$_pk)
+		if($prop == 'id' || $prop == static::$_pk){
 			return $this->_id = $val;
+		}
 
 		// call custom method
-		elseif(method_exists($this,'set'.$prop))
+		elseif(method_exists($this,'set'.$prop)){
 			return call_user_func(array($this, 'set' . $prop));
+		}
 
 		if($this->_id){
 			if(!$this->_loaded){
@@ -1651,17 +1661,24 @@ abstract class AbstractActiveRecord
 				substr($func,4)
 			);
 		}else{
-			throw Exception\BadMethodCallException('Unknown method '.$func.' in class "'.get_called_class().'"');
+			throw Exception\BadMethodCallException('There is no method '.$func.' in class "'.get_called_class().'"');
 		}
 	}
 
-	public static function __callStatic($name,$args){
-		if(substr($name,0,6) == 'findBy'){
-			$what = substr($name,6);
+	public static function __callStatic($func,$args){
+		// ::findByName('name')
+		if(substr($func,0,6) == 'findBy'){
+			$what = substr($func,6);
 			return static::findAll(array($what => $args));
-		}elseif(substr($name,0,9) == 'findOneBy'){
-			$what = substr($name,9);
+
+		// ::findOneByName('name')
+		}elseif(substr($func,0,9) == 'findOneBy'){
+			$what = substr($func,9);
 			return static::findOne(array($what => $args));
+
+		// unknown function
+		}else{
+			throw Exception\BadMethodCallException('There is static method '.$func.' in class "'.get_called_class().'"');
 		}
 	}
 
