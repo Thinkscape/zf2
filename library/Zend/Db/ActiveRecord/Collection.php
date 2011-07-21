@@ -75,7 +75,7 @@ class Collection extends \ArrayObject
 							'and no class name has been supplied.'
 						);
 					}
-					$inject[] = new $this->_className($d);
+					$inject[] = call_user_func(array($this->_className,'_injectionFactory'),$d);
 				}
 			}
 		}else{
@@ -215,7 +215,7 @@ class Collection extends \ArrayObject
     	}else{
     		$data = parent::offsetGet($index);
     		if(is_array($data)){
-    			$obj = new $this->_className($data);
+    			$obj = call_user_func(array($this->_className,'_injectionFactory'),$data);
     			parent::offsetSet($index,$obj);
     			return $obj;
 			}else{
@@ -272,6 +272,14 @@ class Collection extends \ArrayObject
 
 	public function getIterator(){
 		return new $this->_iteratorClass($this->getArrayCopy(), $this->_className, $this->_lazyInit);
+	}
+
+	public function first(){
+		return $this->offsetGet(0);
+	}
+
+	public function last(){
+		return $this->offsetGet($this->count()-1);
 	}
 	
 }

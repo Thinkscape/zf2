@@ -306,6 +306,7 @@ class ActiveRecordTest extends \PHPUnit_Framework_TestCase
 		$this->assertNotSame($obj,$obj2);
 	}
 
+
 	/**
 	 * Create a new non-persistent record, save it to db (insert) and the load it
 	 * back in another object instance.
@@ -429,6 +430,48 @@ class ActiveRecordTest extends \PHPUnit_Framework_TestCase
 			}
 		}
 	}
+
+	/**
+	 * Test persistence while using queries and collections.
+	 *
+	 * @depends testFindAll
+	 * @depends testPersistence
+	 * @return void
+	 */
+	public function testPersistence2(){
+		$this->_createTableForBasic();
+		$this->_createTableForNonPersistent();
+
+		// create a persistent object
+		$name = uniqid();
+		$obj = new TestAsset\Basic();
+		$obj->name = $name;
+		$obj->save();
+		$this->assertNotEmpty($id = $obj->id);
+
+		// try to create another instance with findOneByName
+		$obj2 = TestAsset\Basic::findOneByName($name);
+
+		// both objects should have the same id
+		$this->assertInstanceOf('\\ZendTest\\Db\\ActiveRecord\\TestAsset\\Basic',$obj2);
+		$this->assertEquals($name,$obj2->name);
+		$this->assertEquals($obj->id,$obj2->id);
+		$this->assertSame($obj,$obj2);
+
+		// try to create another instance with findByName
+		$search = TestAsset\Basic::findByName($name);
+		$this->assertInstanceOf('\\Zend\\Db\\ActiveRecord\\Collection',$search);
+		$obj3 = $search->first();
+
+		// both objects should have the same id
+		$this->assertInstanceOf('\\ZendTest\\Db\\ActiveRecord\\TestAsset\\Basic',$obj3);
+		$this->assertEquals($name,$obj3->name);
+		$this->assertEquals($obj->id,$obj3->id);
+		$this->assertSame($obj,$obj3);
+
+
+	}
+
 
 	/**
 	 * @depends testFindAll

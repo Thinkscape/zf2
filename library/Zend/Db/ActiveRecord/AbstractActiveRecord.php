@@ -631,7 +631,7 @@ abstract class AbstractActiveRecord
 
 	 		// store it in registry
 	 		if(static::$_persistent)
-	 			Registry::set(get_called_class().'_'.$param,$obj);
+	 			Registry::set($cacheId,$obj);
 
 	 		return $obj;
 	 	}elseif(is_array($param)){
@@ -642,6 +642,40 @@ abstract class AbstractActiveRecord
 	 	else{
 	 		throw new Exception\BadMethodCallException('Cannot call '.get_called_class().'::factory() with a parameter of type '.gettype($param));
 	 	}
+	}
+
+	/**
+	 * A special factory for constructing instances of existing records from DB data.
+	 * Used by Collection to create new instances from data held in array.
+	 *
+	 * You should never need to call this method.
+	 *
+	 * @static
+	 * @param array $data
+	 * @return \Zend\Db\ActiveRecord\AbstractActiveRecord
+	 */
+	public static function _injectionFactory(Array $data){
+		if(static::$_persistent){
+			$id = $data[static::$_pk];
+
+			// try to find the object in Registry
+	 		$cacheId = strtr(get_called_class(),'\\','_').'_'.$id;
+
+	 		if(
+				Registry::isRegistered($cacheId) &&
+				($obj = Registry::get($cacheId))
+			){
+				return $obj;
+			}
+
+			// create new instance and inject it with data from array
+	 		$obj = new static($data,$id);
+
+	 		// store it in registry
+	 		Registry::set($cacheId,$obj);
+		}else{
+			return new static($data);
+		}
 	}
 
 	/**
