@@ -1702,12 +1702,14 @@ abstract class AbstractActiveRecord
 			if(!$this->_loaded)
 				$this->_loadFromDb();
 
-			if(isset($this->_data[$prop]))
+			if(array_key_exists($prop,$this->_data)){
 				return $this->_data[$prop];
+			}
 		}else{
 			// return in-memory property value
-			if(isset($this->_data[$prop]))
+			if(array_key_exists($prop,$this->_data)){
 				return $this->_data[$prop];
+			}
 		}
 
 		throw new Exception\UndefinedPropertyException(get_class($this),$prop);
@@ -1730,7 +1732,7 @@ abstract class AbstractActiveRecord
 				$this->_loadFromDb();
 			}
 
-			if(isset($this->_data[$prop])){
+			if(array_key_exists($prop,$this->_data)){
 				return $this->_data[$prop] = $val;
 			}else{
 				throw new Exception\UndefinedPropertyException(get_class($this),$prop);
@@ -1740,7 +1742,7 @@ abstract class AbstractActiveRecord
 			// this is a completely new object. Make sure we know column names
 			if(static::$_columns){
 				// check if column (property) exists before setting it
-				if(isset(static::$_columns[$prop])){
+				if(array_key_exists($prop,static::$_columns)){
 					return $this->_data[$prop] = $val;
 				}else{
 					throw new Exception\UndefinedPropertyException(get_class($this),$prop);
@@ -1748,14 +1750,12 @@ abstract class AbstractActiveRecord
 			}else{
 				// we should determine columns
 				static::_loadColumns();
-				if(isset(self::$_columnsCache[get_class($this)][$prop])){
+				if(array_key_exists($prop,self::$_columnsCache[get_class($this)])){
 					return $this->_data[$prop] = $val;
 				}else{
 					throw new Exception\UndefinedPropertyException(get_class($this),$prop);
 				}
 			}
-
-
 		}
 	}
 
